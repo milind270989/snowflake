@@ -1,0 +1,35 @@
+CREATE OR REPLACE PROCEDURE "FIND_USERS_AND_ROLES"("table_name" varchar)
+RETURNS ARRAY
+LANGUAGE JAVASCRIPT
+EXECUTE AS CALLER
+AS '
+var trunc_all_users_create=snowflake.createStatement( {sqlText: `truncate all_users_stm;` } );
+trunc_all_users_create.execute();
+
+var trunc_user_roles_create = snowflake.createStatement( {sqlText: `truncate user_roles;` } );
+trunc_user_roles_create.execute();
+
+var stm1="show users;"
+var stm1_create = snowflake.createStatement({sqlText: stm1});
+stm1_create.execute();
+
+var main_stm = `insert into all_users_stm select ''show grants to user ''||"name"|| '';'' from table(result_scan(-1));`
+var main_stm_create = snowflake.createStatement({sqlText:main_stm});
+var main_stm_execute = main_stm_create.execute();
+
+var loop_create = snowflake.createStatement({sqlText: ` select * from all_users_stm; `});
+var loop_execute = loop_create.execute();
+
+var return_array=[];
+
+while (loop_execute.next()) {
+    var column1= loop_execute.getColumnValue(1);
+    return_array.push(column1);
+    var column1_execute = snowflake.createStatement( {sqlText: column1} );
+    column1_execute.execute();
+    var generic_execution_create = snowflake.createStatement( {sqlText: `insert into user_roles select "role","grantee_name","granted_by" from table(result_scan(-1));`} );
+    generic_execution_create.execute();
+    return_array.push(generic_execution_create)
+}
+return return_array;
+'
